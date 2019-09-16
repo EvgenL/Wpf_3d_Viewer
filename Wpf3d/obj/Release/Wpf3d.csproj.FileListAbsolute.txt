@@ -1,0 +1,15 @@
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\bin\Release\Wpf3d.exe.config
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\bin\Release\Wpf3d.exe
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\bin\Release\Wpf3d.pdb
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\MainWindow.g.cs
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\App.g.cs
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d_MarkupCompile.cache
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d_MarkupCompile.lref
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\MainWindow.baml
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d.g.resources
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d.Properties.Resources.resources
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d.csproj.GenerateResource.cache
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d.csproj.CoreCompileInputs.cache
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d.exe
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\Wpf3d.pdb
+C:\Users\kitae\source\repos\Wpf3d\Wpf3d\obj\Release\App.baml

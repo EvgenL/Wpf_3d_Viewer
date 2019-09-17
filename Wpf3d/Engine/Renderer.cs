@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Net.Cache;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using Wpf3d.Engine.Data;
@@ -19,20 +23,17 @@ namespace Wpf3d.Engine
     /// </summary>
     internal class Renderer
     {
-        private Canvas viewport;
-
         private float zNear = 0.1f;
         private float zFar = 1000f;
         private float fov = 90f;
         // to be initialized on creation
         private Matrix4x4 projectionMatrix;
 
-        private Pen wireframePen;
-        private DrawingVisual visual = new DrawingVisual();
-        private VisualHost visualHost;
-
         private List<Mesh> processedObjects = new List<Mesh>();
 
+        private Color wireframeColor = Colors.GreenYellow;
+        private Color normalColor = Colors.Aqua;
+        private Color backgroundColor = Colors.DarkSlateGray;
 
         // temporary simplifications
         private Vector3d cameraPos = new Vector3d();
@@ -41,10 +42,20 @@ namespace Wpf3d.Engine
         private Vector3d directedLight = new Vector3d(0, 0, -1);
 
         private static bool drawNormals = false;
+        private static bool drawFps = true;
 
-        public Renderer(Canvas viewport)
+        private Image imageViewport;
+        private Label fpsCounter;
+        private static ImageSource testTexture;
+        private static WriteableBitmap wb;
+
+        private static Stopwatch stopwatch = new Stopwatch();
+        private static float targetFps = 60.0f;
+
+        public Renderer(Image imageViewport, Label fpsCounter)
         {
-            this.viewport = viewport;
+            this.imageViewport = imageViewport;
+            this.fpsCounter = fpsCounter;
 
             CalculateProjectionMatrix();
 
@@ -59,16 +70,16 @@ namespace Wpf3d.Engine
         {
             var cube = new MeshCube();
             //cube.Scale(2f);
-            processedObjects.Add(cube);
+            //processedObjects.Add(cube);
 
             //var testMesh = FileLoader.ReadMeshFromObj("models/notebook/Lowpoly_Notebook_2.obj");
-            //var testMesh = FileLoader.ReadMeshFromObj("models/chair.obj");
-            //processedObjects.Add(testMesh);
+            var testMesh = FileLoader.ReadMeshFromObj("models/barrel.obj");
+            processedObjects.Add(testMesh);
         }
 
         private void CalculateProjectionMatrix()
         {
-            float aspectRatio = (float)(viewport.Height / viewport.Width);
+            float aspectRatio = (float)(imageViewport.Height / imageViewport.Width);
             float fFovScaleFactorRad = (float)(1f / Math.Tan(fov * 0.5f / 180f * Math.PI));
 
             projectionMatrix = Matrix4x4.CreateProjection(aspectRatio, fFovScaleFactorRad, zFar, zNear);
@@ -78,15 +89,16 @@ namespace Wpf3d.Engine
         {
             // Start render timer at 60 fps
             DispatcherTimer renderTimer = new DispatcherTimer();
-            renderTimer.Interval = TimeSpan.FromSeconds(1d / 240d);
+            renderTimer.Interval = TimeSpan.FromSeconds(1d / targetFps);
             renderTimer.Tick += (o, args) => Render();
             renderTimer.Start();
+            stopwatch.Start();
         }
 
         private void InitRender()
         {
-            wireframePen = new Pen(Brushes.LawnGreen, 1d);
-            visualHost = new VisualHost(visual);
+            wb = BitmapFactory.New((int)imageViewport.Width, (int)imageViewport.Height);
+            imageViewport.Source = wb;
         }
 
         private void Render()
@@ -96,21 +108,20 @@ namespace Wpf3d.Engine
             Random rand = new Random();
 
             // Clear figures from last frame
-            viewport.Children.Clear();
+            wb.Clear(backgroundColor);
             
-            // open drawing context
-            DrawingContext dc = visual.RenderOpen();
-
             // drawing
-
             foreach (var ob in processedObjects)
             {
-                DrawMesh(ob, dc);
+                DrawMesh(ob, wb);
             }
 
-            // end drawing
-            dc.Close();
-            viewport.Children.Add(visualHost);
+            if (drawFps)
+            {
+                fpsCounter.Content = "fps:" + (1000f / (float) stopwatch.ElapsedMilliseconds).ToString("F1");
+            }
+
+            stopwatch.Restart();
         }
 
         private void DebugUpdateInput()
@@ -161,11 +172,11 @@ namespace Wpf3d.Engine
             }
         }
 
-        private void DrawMesh(Mesh mesh, DrawingContext drawingContext)
+        float theta = 0;
+        private void DrawMesh(Mesh mesh, WriteableBitmap wb)
         {
             // create matrix to transform a triangle
-            //float theta = DateTime.Now.Millisecond / 1000f + DateTime.Now.Second;
-            float theta = 0; // rotation was disabled
+            theta += (float)stopwatch.ElapsedMilliseconds / 1000f;
             Matrix4x4 rotZ = Matrix4x4.RotationMatrixZ(theta/2);
             Matrix4x4 rotX = Matrix4x4.RotationMatrixX(theta);
             Matrix4x4 translationMat = Matrix4x4.CreateTranslation(0, 0, 3);
@@ -226,7 +237,7 @@ namespace Wpf3d.Engine
                     Triangle triProjected = Triangle.MultiplyPointsByProjectionMatrix(triClip, projectionMatrix);
 
                     // map to screen coordinates
-                    RenderMath.ScaleProjectedTriangle(ref triProjected, (int)viewport.Width, (int)viewport.Height);
+                    RenderMath.ScaleProjectedTriangle(ref triProjected, (int)imageViewport.Width, (int)imageViewport.Height);
 
                     trianglesToRaster.Add(triProjected);
                 }
@@ -266,13 +277,13 @@ namespace Wpf3d.Engine
                                 newTris = Triangle.ClipTriangleToPlane(new Vector3d(0, 0, 0), new Vector3d(0, 1, 0), test); // top of the screen
                                 break;
                             case 1:
-                                newTris = Triangle.ClipTriangleToPlane(new Vector3d(0, (float)viewport.Height, 0), new Vector3d(0, -1, 0), test); // bottom
+                                newTris = Triangle.ClipTriangleToPlane(new Vector3d(0, (float)imageViewport.Height, 0), new Vector3d(0, -1, 0), test); // bottom
                                 break;
                             case 2:
                                 newTris = Triangle.ClipTriangleToPlane(new Vector3d(0, 0, 0), new Vector3d(1, 0, 0), test); // left
                                 break;
                             case 3:
-                                newTris = Triangle.ClipTriangleToPlane(new Vector3d((float)viewport.Width, 0, 0), new Vector3d(-1, 0, 0), test); // right
+                                newTris = Triangle.ClipTriangleToPlane(new Vector3d((float)imageViewport.Width, 0, 0), new Vector3d(-1, 0, 0), test); // right
                                 break;
                         }
                     }
@@ -293,21 +304,23 @@ namespace Wpf3d.Engine
 
 
                 var triDraw = triangle;
-                //foreach (var triDraw in trianglesResult)
+                //todo foreach (var triDraw in trianglesResult)
                 {
                     // shade
-                    FillTriangle(triDraw, drawingContext, new SolidColorBrush(triangle.Color));
+                    FillTriangle(triDraw, wb, triangle.Color);
 
+                    // texture
+                    //TextureTriangle(triDraw, wb);
+                    
                     // draw wireframe
-                    DrawTriangleWireframe(triDraw, drawingContext);
-
+                    DrawTriangleWireframe(triDraw, wb, wireframeColor);
+                    
                     // draw normals
-                    if (drawNormals)
+                    if (true||drawNormals)
                     {
                         var cp = triangle.GetCenterPoint();
-                        Pen normalsPen = new Pen(Brushes.DeepSkyBlue, 4f);
-                        DrawPoint(cp, drawingContext, normalsPen);
-                        DrawRay(triangle.GetCenterPoint(), triangle.GetNormal() * 50, drawingContext, normalsPen);
+                        DrawPoint(cp, wb, normalColor);
+                        //DrawRay(triangle.GetCenterPoint(), triangle.GetNormal() * 50, drawingContext, normalsPen);
                     }
                 }
                 
@@ -315,38 +328,21 @@ namespace Wpf3d.Engine
             }
         }
 
-        private static void FillTriangle(Triangle tri, DrawingContext drawingContext, SolidColorBrush colorBrush)
+        private static void TextureTriangle(Triangle tri, WriteableBitmap bitmap/*, Texture texture*/)
         {
-            Pen pen = new Pen(colorBrush, 0f);
-
-            // start point
-            Point start = new Point(tri.p[0].x, tri.p[0].y);
-
-            // other points
-            var segments = new[]
-            {
-                new LineSegment(new Point(tri.p[1].x, tri.p[1].y), false),
-                new LineSegment(new Point(tri.p[2].x, tri.p[2].y), false)
-            };
-            // the triangle figure
-            PathFigure figure = new PathFigure(start, segments, true);
-            // geometry for drawing triangle
-            Geometry triangleGeometry = new PathGeometry(new []{figure});
-            // draw
-            drawingContext.DrawGeometry(pen.Brush, pen, triangleGeometry);
-
-            // draw over one pigel wide gap between triangles
-            pen.Thickness = 1;
-            drawingContext.DrawLine(pen, new Point(tri.p[0].x, tri.p[0].y), new Point(tri.p[1].x, tri.p[1].y));
-            drawingContext.DrawLine(pen, new Point(tri.p[2].x, tri.p[2].y), new Point(tri.p[1].x, tri.p[1].y));
-            drawingContext.DrawLine(pen, new Point(tri.p[2].x, tri.p[2].y), new Point(tri.p[0].x, tri.p[0].y));
         }
 
-        private void DrawTriangleWireframe(Triangle tri, DrawingContext drawingContext)
+        private static void FillTriangle(Triangle tri, WriteableBitmap bitmap, Color color)
         {
-            drawingContext.DrawLine(wireframePen, new Point(tri.p[0].x, tri.p[0].y), new Point(tri.p[1].x, tri.p[1].y));
-            drawingContext.DrawLine(wireframePen, new Point(tri.p[2].x, tri.p[2].y), new Point(tri.p[1].x, tri.p[1].y));
-            drawingContext.DrawLine(wireframePen, new Point(tri.p[2].x, tri.p[2].y), new Point(tri.p[0].x, tri.p[0].y));
+            bitmap.FillTriangle((int)tri.p[0].x, (int)tri.p[0].y, (int)tri.p[1].x, (int)tri.p[1].y,
+                (int)tri.p[2].x, (int)tri.p[2].y, color);
+        }
+
+        private static void DrawTriangleWireframe(Triangle tri, WriteableBitmap bitmap, Color color)
+        {
+            bitmap.DrawLine((int)tri.p[0].x, (int)tri.p[0].y, (int)tri.p[1].x, (int)tri.p[1].y, color);
+            bitmap.DrawLine((int)tri.p[1].x, (int)tri.p[1].y, (int)tri.p[2].x, (int)tri.p[2].y, color);
+            bitmap.DrawLine((int)tri.p[2].x, (int)tri.p[2].y, (int)tri.p[0].x, (int)tri.p[0].y, color);
         }
 
         private static void DrawLine(Vector3d position, Vector3d target, DrawingContext drawingContext,
@@ -364,9 +360,12 @@ namespace Wpf3d.Engine
             DrawLine(position, posTarget, drawingContext, pen);
         }
 
-        private static void DrawPoint(Vector3d position, DrawingContext drawingContext, Pen pen)
+        private static void DrawPoint(Vector3d position, WriteableBitmap bitmap, Color color)
         {
-            drawingContext.DrawEllipse(pen.Brush, pen, new Point(position.x, position.y), 1, 1);
+            bitmap.FillEllipse(
+                (int)(position.x) - 1, (int)(position.y) - 1,
+                (int)(position.x) + 1, (int)(position.y) + 1,
+                color);
         }
 
         private static void DrawText(string text, int size, Point pos, DrawingContext drawingContext, Pen pen)

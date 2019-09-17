@@ -7,7 +7,8 @@
         mc:Ignorable="d"
         Title="Wpf3d" Height="720" Width="1280">
     <Grid>
-        <Canvas x:Name ="Viewport" HorizontalAlignment="Left" Height="679" VerticalAlignment="Top" Width="1262" Background="#FF474141"/>
+        <Image x:Name="ImageViewport" Margin="10" Height="720" Width="1280"/>
+        <Label x:Name="FpsCounter" Content="0.0" HorizontalAlignment="Left" Margin="28,22,0,0" VerticalAlignment="Top" Height="88" Width="220" Foreground="#FFFFB900" FontSize="36"/>
 
     </Grid>
 </Window>

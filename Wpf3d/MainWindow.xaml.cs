@@ -21,7 +21,7 @@ namespace Wpf3d
         {
             InitializeComponent();
 
-            Engine3d.Start(Viewport);
+            Engine3d.Start(ImageViewport, FpsCounter);
         }
 
         protected override void OnClosed(EventArgs e)

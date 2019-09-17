@@ -16,16 +16,11 @@ namespace Wpf3d.Engine
 
         private Renderer renderer;
 
-        // todo private Flie targetFile
-        // todo LoadFile(string path){ FileLoader.LoadFile(path);};
-
-        
-
-        public static void Start(Canvas viewport)
+        public static void Start(Image imageViewport, Label fpsCounter)
         {
             _instance = new Engine3d();
 
-            _instance.RendererInit(viewport);
+            _instance.RendererInit(imageViewport, fpsCounter);
 
             Thread mainThread = new Thread(new ThreadStart(_instance.MainThread));
             mainThread.Start();
@@ -43,11 +38,9 @@ namespace Wpf3d.Engine
             }
         }
 
-        private void RendererInit(Canvas viewport)
+        private void RendererInit(Image imageViewport, Label fpsCounter)
         {
-            renderer = new Renderer(viewport);
-
-
+            renderer = new Renderer(imageViewport, fpsCounter);
         }
 
         protected virtual void Initialize()
@@ -64,13 +57,6 @@ namespace Wpf3d.Engine
 
         private void Render()
         {
-            ClearScreen();
-            // DrawAll
-        }
-
-        private void ClearScreen()
-        {
-
         }
 
     }

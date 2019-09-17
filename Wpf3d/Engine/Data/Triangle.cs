@@ -41,7 +41,7 @@ namespace Wpf3d.Engine.Data
         public Vector3d GetCenterPoint()
         {
             Vector3d sum = p[0] + p[1] + p[2];
-            return sum / 3;
+            return sum / 3 ;
         }
 
         public Vector3d GetNormal()
@@ -110,6 +110,8 @@ namespace Wpf3d.Engine.Data
 
             List<Vector3d> outsidePoints = new List<Vector3d>(3);
             List<Vector3d> insidePoints = new List<Vector3d>(3);
+            List<Vector2d> outsideTex = new List<Vector2d>(3);
+            List<Vector2d> insideTex = new List<Vector2d>(3);
 
 
             // find if points are inside or outside of the plane
@@ -120,9 +122,15 @@ namespace Wpf3d.Engine.Data
                 float d = Vector3d.DotProduct(tri.p[i], planeN) - planePN;
 
                 if (d >= 0)
+                {
                     insidePoints.Add(tri.p[i]);
+                    insideTex.Add(tri.uv[i]);
+                }
                 else
+                {
                     outsidePoints.Add(tri.p[i]);
+                    outsideTex.Add(tri.uv[i]);
+                }
             }
 
             // break input triangle if needed
@@ -142,14 +150,22 @@ namespace Wpf3d.Engine.Data
 
             Triangle newTri1 = new Triangle();
             newTri1.SetColor(tri.Color);
+            newTri1.Normal = tri.Normal;
+
+            float t; // how much of a edge was cut in range of [0; 1]
 
             if (insidePoints.Count == 1 && outsidePoints.Count == 2)
             {
                 // other two points are outside of the plane so set them to be at intersect position
                 // the one inside point is valid
                 newTri1.p[0] = insidePoints[0];
-                newTri1.p[1] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[0], outsidePoints[0]);
-                newTri1.p[2] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[0], outsidePoints[1]);
+                newTri1.uv[0] = insideTex[0];
+
+                newTri1.p[1] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[0], outsidePoints[0], out t);
+                newTri1.uv[1] = t * (outsideTex[0] - insideTex[0]);
+
+                newTri1.p[2] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[0], outsidePoints[1], out t);
+                newTri1.uv[2] = t * (outsideTex[1] - insideTex[0]);
 
                 if (visualiseClipping)
                 {
@@ -169,8 +185,13 @@ namespace Wpf3d.Engine.Data
 
                 // the two inside points are valid
                 newTri1.p[0] = insidePoints[0];
+                newTri1.uv[0] = insideTex[0];
+
                 newTri1.p[1] = insidePoints[1];
-                newTri1.p[2] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[0], outsidePoints[0]);
+                newTri1.uv[1] = insideTex[1];
+
+                newTri1.p[2] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[0], outsidePoints[0], out t);
+                newTri1.uv[1] = t * (outsideTex[0] - insideTex[0]);
 
                 if (visualiseClipping)
                 {
@@ -179,9 +200,17 @@ namespace Wpf3d.Engine.Data
 
                 // other two points are outside of the plane so set them to be at intersect point
                 newTri2.p[0] = insidePoints[1];
+                newTri1.uv[0] = insideTex[1];
+
                 newTri2.p[1] = newTri1.p[2];
-                newTri2.p[2] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[1], outsidePoints[0]);
+                newTri1.uv[1] = newTri1.uv[1];
+
+                newTri2.p[2] = RenderMath.LineIntersectPlane(planeP, planeN, insidePoints[1], outsidePoints[0], out t);
+                newTri1.uv[2] = t * (outsideTex[0] - insideTex[1]);
+
+
                 newTri2.SetColor(tri.Color);
+                newTri2.Normal = tri.Normal;
 
                 if (visualiseClipping)
                 {
@@ -200,6 +229,7 @@ namespace Wpf3d.Engine.Data
             Color = color;
             Colored = true;
         }
+        
     }
 
 }

@@ -43,13 +43,13 @@ namespace Wpf3d.Engine
         }
 
         public static Vector3d LineIntersectPlane(Vector3d planeP, Vector3d planeN, Vector3d lineStart,
-            Vector3d lineEnd)
+            Vector3d lineEnd, out float t)
         {
             planeN = planeN.Normalized();
             float planeD = -(Vector3d.DotProduct(planeN, planeP));
             float ad = Vector3d.DotProduct(lineStart, planeN);
             float bd = Vector3d.DotProduct(lineEnd, planeN);
-            float t = (-planeD - ad) / (bd - ad);
+            /*float*/ t = (-planeD - ad) / (bd - ad);
             Vector3d lineStartToEnd = lineEnd - lineStart;
             Vector3d lineToIntersect = lineStartToEnd * t;
             return lineStart + lineToIntersect;
